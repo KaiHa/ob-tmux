@@ -68,7 +68,7 @@ Change in case you want to use a different tmux than the one in your $PATH."
 (defcustom org-babel-tmux-terminal-opts '("--")
   "The list of options that will be passed to the terminal."
   :group 'org-babel
-  :type 'list)
+  :type '(repeat string))
 
 (defvar org-babel-default-header-args:tmux
   '((:results . "silent")
