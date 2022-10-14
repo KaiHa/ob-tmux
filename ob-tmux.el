@@ -45,10 +45,13 @@
 
 
 (defcustom org-babel-tmux-location "tmux"
-  "The command location for tmux.
-Change in case you want to use a different tmux than the one in your $PATH."
+  "Either the command location for tmux or a command plus its
+arguments as a list (e.g. '(\"wsl.exe\" \"tmux\")).  Change in
+case you want to use a different tmux than the one in your
+$PATH."
   :group 'org-babel
-  :type 'string)
+  :type '(radio (string :tag "the command location")
+                (sexp :tag "a command plus its arguments as a list" :value '("wsl.exe" "tmux"))))
 
 (defcustom org-babel-tmux-session-prefix "org-babel-session-"
   "The string that will be prefixed to tmux session names started by ob-tmux."
@@ -179,11 +182,12 @@ Argument OB-SESSION: the current ob-tmux session.
 Optional command-line arguments can be passed in ARGS."
   (if (ob-tmux--socket ob-session)
       (apply 'start-process "ob-tmux" "*Messages*"
-	     org-babel-tmux-location
-	     "-S" (ob-tmux--socket ob-session)
-	     args)
+	     (ob-tmux-executable)
+             (append (ob-tmux-args)
+	             (list "-S" (ob-tmux--socket ob-session))
+	             args))
     (apply 'start-process
-	   "ob-tmux" "*Messages*" org-babel-tmux-location args)))
+	   "ob-tmux" "*Messages*" (ob-tmux-executable) (append (ob-tmux-args) args))))
 
 (defun ob-tmux--execute-string (ob-session &rest args)
   "Execute a tmux command with arguments as given.
@@ -195,8 +199,8 @@ automatically space separated."
   (let* ((socket (ob-tmux--socket ob-session))
 	 (args (if socket (cons "-S" (cons socket args)) args)))
   (shell-command-to-string
-   (concat org-babel-tmux-location " "
-	   (s-join " " args)))))
+   (concat (ob-tmux-executable) " "
+	   (s-join " " (append (ob-tmux-args) args))))))
 
 (defun ob-tmux--start-terminal-window (ob-session terminal)
   "Start a TERMINAL window with tmux attached to session.
@@ -205,13 +209,29 @@ automatically space separated."
   (let ((start-process-mandatory-args `("org-babel: terminal"
 					"*Messages*"
 					,terminal))
-	(tmux-cmd `(,org-babel-tmux-location
+	(tmux-cmd `(,(if (listp org-babel-tmux-location) org-babel-tmux-location (list org-babel-tmux-location))
 		    "attach-session"
 		    "-t" ,(ob-tmux--target ob-session))))
     (unless (ob-tmux--socket ob-session)
       (apply 'start-process (append start-process-mandatory-args
 				    org-babel-tmux-terminal-opts
 				    tmux-cmd)))))
+
+(defun ob-tmux-executable ()
+  "Return the configured executable."
+  (cond
+   ((listp org-babel-tmux-location)
+    (car org-babel-tmux-location))
+   ((stringp org-babel-tmux-location)
+    org-babel-tmux-location)
+   (t
+    (error "org-babel-tmux-location is neither list nor string"))))
+
+(defun ob-tmux-args ()
+  "Return the configured arguments as a list."
+  (if (listp org-babel-tmux-location)
+      (cdr org-babel-tmux-location)
+    nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tmux interaction
