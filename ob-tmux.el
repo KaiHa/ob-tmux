@@ -115,7 +115,7 @@ Argument PARAMS the org parameters of the code block."
       ;; Disable window renaming from within tmux
       (ob-tmux--disable-renaming ob-session)
       (ob-tmux--send-body
-       ob-session (org-babel-expand-body:generic body params vars))
+       ob-session (org-babel-expand-body:generic (concat (format "cd %s\n" default-directory) body) params vars))
       ;; Warn that setting the terminal from the org source block
       ;; header arguments is going to be deprecated.
       (message "ob-tmux terminal: %s" org-header-terminal)
